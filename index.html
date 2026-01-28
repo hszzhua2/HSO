@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HSO - 医院空间句法优化器 Pro v2.2</title>
+    <title>HSO - 医院空间句法优化器 Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <script>
@@ -37,6 +37,7 @@
         
         .canvas-container { position: relative; overflow: hidden; background-color: #f3f4f6; }
         
+        /* 针对不同模式改变鼠标样式 */
         .cursor-pan { cursor: grab; }
         .cursor-panning { cursor: grabbing; }
         .cursor-draw { cursor: crosshair; }
@@ -45,33 +46,29 @@
         
         .tooltip {
             position: fixed;
-            background: rgba(15, 23, 42, 0.95);
+            background: rgba(15, 23, 42, 0.9);
             color: white;
             font-size: 12px;
-            padding: 10px 14px;
-            border-radius: 8px;
+            padding: 8px 12px;
+            border-radius: 6px;
             pointer-events: none;
             z-index: 50;
             backdrop-filter: blur(4px);
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
             border: 1px solid rgba(255,255,255,0.1);
             transform: translate(15px, 15px);
-            min-width: 160px;
         }
         
+        /* 真正的光谱渐变 */
         .bg-gradient-spectrum {
             background: linear-gradient(to right, 
-                hsl(240, 100%, 50%), /* Deep Blue (Cold/Deep) */
-                hsl(200, 100%, 50%), 
-                hsl(120, 100%, 50%), 
-                hsl(60, 100%, 50%),  
-                hsl(30, 100%, 50%),  
-                hsl(0, 100%, 50%)    /* Red (Hot/Shallow) */
+                hsl(240, 100%, 50%), /* Deep Blue */
+                hsl(200, 100%, 50%), /* Light Blue */
+                hsl(120, 100%, 50%), /* Green */
+                hsl(60, 100%, 50%),  /* Yellow */
+                hsl(30, 100%, 50%),  /* Orange */
+                hsl(0, 100%, 50%)    /* Red */
             );
-        }
-
-        .mode-badge {
-            transition: all 0.3s ease;
         }
     </style>
 </head>
@@ -80,76 +77,90 @@
     <div class="w-64 bg-white border-r border-gray-200 flex flex-col shadow-sm z-10 shrink-0">
         <div class="p-4 border-b border-gray-100">
             <h1 class="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <i class="fa fa-hospital-o text-blue-600"></i>
-                HSO Pro <span class="text-[10px] bg-blue-100 text-blue-600 px-1 rounded">v2.2</span>
+                <i class="fa fa-line-chart text-blue-600"></i>
+                HSO Pro
             </h1>
             <p class="text-xs text-slate-500 mt-1">Hospital Syntax Optimizer</p>
         </div>
 
         <div class="p-4 space-y-4 flex-1 overflow-y-auto scrollbar-hide">
             <!-- Instructions -->
-            <div class="bg-slate-50 p-3 rounded-lg text-xs text-slate-600 leading-relaxed border border-slate-100">
-                <p class="font-bold mb-1 text-slate-700">操作指南:</p>
-                <ul class="list-disc pl-3 space-y-1">
-                    <li><strong>绘制</strong>: 快捷键 P，拖拽画线</li>
-                    <li><strong>选择</strong>: 快捷键 V，点击或框选</li>
-                    <li><strong>起点</strong>: 放置入口，分析将综合考虑“转弯次数”与“物理距离”。</li>
+            <div class="bg-blue-50 p-3 rounded-lg text-xs text-blue-800 leading-relaxed border border-blue-100">
+                <p><strong>操作指南:</strong></p>
+                <ul class="list-disc pl-3 mt-1 space-y-1 text-blue-700/80">
+                    <li><strong>中键/空格+左键</strong>: 平移画布</li>
+                    <li><strong>滚轮</strong>: 缩放视图</li>
+                    <li><strong>左键</strong>: 点选 / 框选</li>
+                    <li><strong>拖拽</strong>: 移动轴线 / 编辑端点</li>
+                    <li><strong>Delete</strong>: 删除选中</li>
+                    <li><strong>Ctrl+Z</strong>: 撤销</li>
                 </ul>
             </div>
 
             <div class="space-y-2">
-                <label class="text-xs font-semibold text-slate-400 uppercase">1. 底图 / 模式</label>
+                <label class="text-xs font-semibold text-slate-400 uppercase">1. 底图导入</label>
                 <div class="relative group">
                     <button id="uploadBtn" class="w-full flex items-center justify-center gap-2 py-2 px-4 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-blue-500 hover:text-blue-500 transition-colors">
-                        <i class="fa fa-upload"></i> 导入底图
+                        <i class="fa fa-upload"></i>
+                        上传 DXF/图片
                     </button>
                     <input type="file" id="fileInput" accept="image/*" onchange="handleFileUpload(event)" class="absolute inset-0 opacity-0 cursor-pointer">
                 </div>
-                <div class="flex gap-2 mt-2">
-                    <button id="selectBtn" onclick="setMode('SELECT')" class="flex-1 flex flex-col items-center gap-1 p-2 rounded-lg text-xs transition-all bg-gray-100 hover:bg-gray-200" title="选择 (V)">
-                        <i class="fa fa-mouse-pointer text-base"></i> 选择
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-xs font-semibold text-slate-400 uppercase">2. 工具模式</label>
+                <div class="flex gap-2">
+                    <button id="selectBtn" onclick="setMode('SELECT')" class="flex-1 flex flex-col items-center gap-1 p-2 rounded-lg text-xs transition-all bg-gray-100 hover:bg-gray-200" title="选择/编辑 (V)">
+                        <i class="fa fa-mouse-pointer text-base"></i>
+                        选择 (V)
                     </button>
-                    <button id="drawBtn" onclick="setMode('DRAW')" class="flex-1 flex flex-col items-center gap-1 p-2 rounded-lg text-xs transition-all hover:bg-gray-100" title="绘制 (P)">
-                        <i class="fa fa-pencil text-base"></i> 绘制
+                    <button id="drawBtn" onclick="setMode('DRAW')" class="flex-1 flex flex-col items-center gap-1 p-2 rounded-lg text-xs transition-all hover:bg-gray-100" title="绘制轴线 (P)">
+                        <i class="fa fa-pencil text-base"></i>
+                        绘制 (P)
                     </button>
                 </div>
             </div>
 
             <div class="space-y-2">
-                <label class="text-xs font-semibold text-slate-400 uppercase">2. 核心标记</label>
-                
-                <!-- 新增起点按钮 -->
-                <button id="startBtn" onclick="setMode('POI_START')" class="poi-btn w-full flex items-center justify-center gap-2 p-3 rounded-lg border-2 border-yellow-100 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 hover:border-yellow-300 transition-all font-bold text-sm mb-2 shadow-sm">
-                    <i class="fa fa-map-marker text-lg"></i>
-                    添加起点 (Multi-Start)
+                <label class="text-xs font-semibold text-slate-400 uppercase">3. 功能标记 (POI)</label>
+                <!-- New Entrance Button Added -->
+                <button id="entranceBtn" onclick="setMode('POI_ENTRANCE')" class="poi-btn w-full mb-2 flex items-center justify-center gap-2 p-2 rounded border text-xs border-amber-200 bg-amber-50 text-amber-700 font-bold hover:bg-amber-100 transition-colors">
+                    <i class="fa fa-sign-in text-lg"></i>
+                    添加出入口 (Entrance)
                 </button>
 
                 <div class="grid grid-cols-2 gap-2">
-                    <button id="emergencyBtn" onclick="setMode('POI_EMERGENCY')" class="poi-btn flex flex-col items-center justify-center p-2 rounded border text-xs border-gray-100 hover:bg-gray-50 transition-all">
-                        <div class="w-3 h-3 rounded-full bg-red-500 mb-1 shadow-sm"></div> 急诊
+                    <button id="emergencyBtn" onclick="setMode('POI_EMERGENCY')" class="poi-btn flex flex-col items-center justify-center p-2 rounded border text-xs border-gray-100 hover:bg-gray-50">
+                        <div class="w-3 h-3 rounded-full bg-red-500 mb-1 shadow-sm"></div>
+                        急诊入口
                     </button>
-                    <button id="surgeryBtn" onclick="setMode('POI_SURGERY')" class="poi-btn flex flex-col items-center justify-center p-2 rounded border text-xs border-gray-100 hover:bg-gray-50 transition-all">
-                        <div class="w-3 h-3 rounded-full bg-blue-500 mb-1 shadow-sm"></div> 手术
+                    <button id="surgeryBtn" onclick="setMode('POI_SURGERY')" class="poi-btn flex flex-col items-center justify-center p-2 rounded border text-xs border-gray-100 hover:bg-gray-50">
+                        <div class="w-3 h-3 rounded-full bg-blue-500 mb-1 shadow-sm"></div>
+                        手术部
                     </button>
-                    <button id="icuBtn" onclick="setMode('POI_ICU')" class="poi-btn flex flex-col items-center justify-center p-2 rounded border text-xs border-gray-100 hover:bg-gray-50 transition-all">
-                        <div class="w-3 h-3 rounded-full bg-purple-500 mb-1 shadow-sm"></div> ICU
+                    <button id="icuBtn" onclick="setMode('POI_ICU')" class="poi-btn flex flex-col items-center justify-center p-2 rounded border text-xs border-gray-100 hover:bg-gray-50">
+                        <div class="w-3 h-3 rounded-full bg-purple-500 mb-1 shadow-sm"></div>
+                        ICU
                     </button>
-                    <button id="wardBtn" onclick="setMode('POI_WARD')" class="poi-btn flex flex-col items-center justify-center p-2 rounded border text-xs border-gray-100 hover:bg-gray-50 transition-all">
-                        <div class="w-3 h-3 rounded-full bg-emerald-500 mb-1 shadow-sm"></div> 护士站
+                    <button id="wardBtn" onclick="setMode('POI_WARD')" class="poi-btn flex flex-col items-center justify-center p-2 rounded border text-xs border-gray-100 hover:bg-gray-50">
+                        <div class="w-3 h-3 rounded-full bg-emerald-500 mb-1 shadow-sm"></div>
+                        护士站
                     </button>
                 </div>
             </div>
             
-            <div class="pt-4 border-t border-gray-100 mt-auto">
-                <div class="flex justify-between items-center mb-2">
-                    <div class="text-xs text-gray-500 font-medium" id="legendTitle">Global Integration</div>
+            <div class="pt-4 border-t border-gray-100">
+                <div class="text-xs text-gray-400 mb-2 flex justify-between items-center">
+                    <span id="legendTitle">图例 (Legend)</span>
+                    <span id="analysisMode" class="text-[10px] bg-gray-100 px-1 rounded text-gray-500">Global Int</span>
                 </div>
                 <div class="flex items-center gap-2 mb-1">
                     <div class="w-full h-3 rounded bg-gradient-spectrum shadow-inner border border-gray-200"></div>
                 </div>
-                <div class="flex justify-between text-[10px] text-gray-400 font-mono">
-                    <span id="legendLow">Segregated</span>
-                    <span id="legendHigh">Integrated</span>
+                <div class="flex justify-between text-[10px] text-gray-400">
+                    <span id="legendLow">Low / Deep</span>
+                    <span id="legendHigh">High / Shallow</span>
                 </div>
             </div>
         </div>
@@ -157,29 +168,23 @@
 
     <!-- Main Content -->
     <div class="flex-1 flex flex-col relative overflow-hidden">
-        <!-- Top Stats Bar -->
-        <div class="absolute top-4 left-4 z-10 flex flex-col gap-2 pointer-events-none">
-            <div class="bg-white/90 backdrop-blur shadow-sm rounded-lg p-2 px-3 border border-gray-200 flex flex-col pointer-events-auto min-w-[100px]">
-                <span class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">分析模式</span>
-                <span id="analysisModeBadge" class="text-sm font-bold text-blue-600 flex items-center gap-1">
-                    <i class="fa fa-globe"></i> 全局整合度
-                </span>
+        <!-- Overlay Stats -->
+        <div class="absolute top-4 left-4 z-10 pointer-events-none flex gap-2">
+            <div class="bg-white/90 backdrop-blur shadow-sm rounded-lg p-2 px-3 border border-gray-200 flex flex-col pointer-events-auto">
+                <span class="text-xs text-gray-500 uppercase font-semibold">Scale</span>
+                <span id="zoomLevel" class="text-sm font-mono font-bold text-slate-700">100%</span>
             </div>
-            <div class="flex gap-2">
-                <div class="bg-white/90 backdrop-blur shadow-sm rounded-lg p-2 px-3 border border-gray-200 pointer-events-auto">
-                    <span id="zoomLevel" class="text-xs font-mono font-bold text-slate-700">100%</span>
-                </div>
-                <div class="bg-white/90 backdrop-blur shadow-sm rounded-lg p-2 px-3 border border-gray-200 pointer-events-auto">
-                    <span id="objCount" class="text-xs font-mono font-bold text-slate-700">0 Lines</span>
-                </div>
+             <div class="bg-white/90 backdrop-blur shadow-sm rounded-lg p-2 px-3 border border-gray-200 flex flex-col pointer-events-auto">
+                <span class="text-xs text-gray-500 uppercase font-semibold">Objects</span>
+                <span id="objCount" class="text-sm font-mono font-bold text-slate-700">0 Lines</span>
             </div>
         </div>
 
         <div class="absolute top-4 right-4 z-10 flex gap-2 pointer-events-none">
-             <button onclick="actions.undo()" class="pointer-events-auto bg-white hover:bg-gray-50 text-slate-700 w-9 h-9 flex items-center justify-center rounded-lg shadow-sm border border-gray-200 transition-colors" title="撤销 (Ctrl+Z)">
+             <button onclick="actions.undo()" class="pointer-events-auto bg-white hover:bg-gray-50 text-slate-700 p-2 rounded-lg shadow-sm border border-gray-200 transition-colors" title="撤销 (Ctrl+Z)">
                 <i class="fa fa-undo"></i>
             </button>
-            <button onclick="actions.deleteSelection()" class="pointer-events-auto bg-white hover:bg-red-50 text-red-600 w-9 h-9 flex items-center justify-center rounded-lg shadow-sm border border-gray-200 transition-colors" title="删除选中 (Del)">
+            <button onclick="actions.deleteSelection()" class="pointer-events-auto bg-white hover:bg-red-50 text-red-600 p-2 rounded-lg shadow-sm border border-gray-200 transition-colors" title="删除选中 (Del)">
                 <i class="fa fa-trash"></i>
             </button>
         </div>
@@ -188,81 +193,70 @@
         <div class="flex-1 bg-gray-100 relative canvas-container" id="canvasContainer">
             <canvas id="mainCanvas" class="block outline-none w-full h-full"></canvas>
             
-            <!-- Dynamic Tooltip -->
+            <!-- Tooltip -->
             <div id="tooltip" class="tooltip hidden">
-                <div class="font-bold mb-2 border-b border-gray-600 pb-1 text-white flex justify-between items-center">
-                    <span>Space Info</span>
-                    <span id="tooltipId" class="text-[10px] bg-gray-700 px-1 rounded text-gray-300 font-mono"></span>
+                <div class="font-bold mb-1 border-b border-gray-600 pb-1 text-gray-300 flex justify-between items-center gap-4">
+                    <span>ID: <span id="tooltipId" class="text-white"></span></span>
                 </div>
-                <div id="tooltipContent" class="space-y-1">
-                    <!-- Dynamic Content -->
+                <!-- Dynamic Content Area -->
+                <div id="tooltipContent" class="mt-1 space-y-1">
+                    <!-- Populated by JS -->
                 </div>
             </div>
         </div>
 
         <!-- Bottom Diagnosis Panel -->
-        <div class="h-40 bg-white border-t border-gray-200 flex shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20 shrink-0">
-            <!-- Card 1: Entrance Accessibility -->
-            <div class="flex-1 p-4 border-r border-gray-100 flex flex-col group hover:bg-slate-50 transition-colors">
-                <div class="flex items-center gap-2 mb-2">
-                    <div class="w-8 h-8 rounded-lg bg-yellow-100 text-yellow-600 flex items-center justify-center">
-                        <i class="fa fa-map-signs"></i>
-                    </div>
-                    <div>
-                        <h3 class="font-bold text-slate-800 text-sm">入口综合可达性</h3>
-                        <p class="text-[10px] text-gray-400">Topo Steps + Metric Dist</p>
-                    </div>
+        <div class="h-48 bg-white border-t border-gray-200 flex shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20 shrink-0">
+            <!-- Card 1 -->
+            <div class="flex-1 p-5 border-r border-gray-100 flex flex-col">
+                <div class="flex items-center gap-2 mb-3">
+                    <i class="fa fa-heartbeat text-rose-500 text-lg"></i>
+                    <h3 class="font-bold text-slate-800">急救效率</h3>
                 </div>
                 <div class="flex-1 flex flex-col justify-center">
                     <div class="flex items-baseline gap-2">
-                        <span id="maxDepthVal" class="text-2xl font-mono font-bold text-slate-800">-</span>
-                        <span class="text-xs text-gray-500">Max Depth</span>
+                        <span id="emergencyDepth" class="text-3xl font-mono font-bold text-slate-800">-</span>
+                        <span class="text-sm text-gray-500">Steps</span>
                     </div>
-                    <div id="entranceStatus" class="mt-1 text-xs text-gray-400">
-                        请先设置起点...
-                    </div>
-                </div>
-            </div>
-
-            <!-- Card 2: Emergency Flow -->
-            <div class="flex-1 p-4 border-r border-gray-100 flex flex-col group hover:bg-slate-50 transition-colors">
-                <div class="flex items-center gap-2 mb-2">
-                    <div class="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center">
-                        <i class="fa fa-ambulance"></i>
-                    </div>
-                    <div>
-                        <h3 class="font-bold text-slate-800 text-sm">急救流线</h3>
-                        <p class="text-[10px] text-gray-400">Emergency -> Surgery</p>
-                    </div>
-                </div>
-                <div class="flex-1 flex flex-col justify-center">
-                    <div class="flex items-baseline gap-2">
-                        <span id="emergencyDepth" class="text-2xl font-mono font-bold text-slate-800">-</span>
-                        <span class="text-xs text-gray-500">Steps</span>
-                    </div>
-                    <div id="emergencyStatus" class="mt-1 text-xs text-gray-400">
+                    <div id="emergencyStatus" class="mt-2 text-xs font-medium px-2 py-1 rounded w-fit bg-gray-100 text-gray-500">
                         等待标记...
                     </div>
                 </div>
             </div>
 
-            <!-- Card 3: Synergy -->
-            <div class="flex-1 p-4 flex flex-col group hover:bg-slate-50 transition-colors">
-                <div class="flex items-center gap-2 mb-2">
-                    <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
-                        <i class="fa fa-sitemap"></i>
-                    </div>
-                    <div>
-                        <h3 class="font-bold text-slate-800 text-sm">空间协同</h3>
-                        <p class="text-[10px] text-gray-400">Core Structure</p>
-                    </div>
+            <!-- Card 2 -->
+            <div class="flex-1 p-5 border-r border-gray-100 flex flex-col">
+                <div class="flex items-center gap-2 mb-3">
+                    <i class="fa fa-lock text-amber-500 text-lg"></i>
+                    <h3 class="font-bold text-slate-800">ICU 隐私</h3>
                 </div>
-                <div class="flex-1 flex flex-col justify-center gap-2">
-                     <div class="flex justify-between items-center text-xs">
-                        <span class="text-gray-500">高活轴线比</span>
-                        <span id="coreRatio" class="font-bold text-slate-700">0%</span>
+                 <div class="flex-1 flex flex-col justify-center">
+                    <div class="flex items-baseline gap-2">
+                        <span id="privacyValue" class="text-3xl font-mono font-bold text-slate-800">0.00</span>
+                        <span class="text-sm text-gray-500">R=3 Integration</span>
                     </div>
-                    <div class="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                    <p id="privacyMsg" class="text-xs text-gray-500 mt-2">等待标记...</p>
+                </div>
+            </div>
+
+            <!-- Card 3 -->
+            <div class="flex-1 p-5 flex flex-col">
+                <div class="flex items-center gap-2 mb-3">
+                    <i class="fa fa-connectdevelop text-blue-500 text-lg"></i>
+                    <h3 class="font-bold text-slate-800">空间协同</h3>
+                </div>
+                <div class="flex-1">
+                    <div class="text-sm text-gray-600 mb-4">
+                        <div class="flex justify-between mb-1">
+                            <span class="text-xs text-gray-400">分析模式</span>
+                            <span id="mainStreetStatus" class="text-xs font-bold text-gray-500">标准句法</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-xs text-gray-400">高活轴线</span>
+                            <span id="highIntCount" class="text-xs font-mono font-bold">0</span>
+                        </div>
+                    </div>
+                    <div class="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
                         <div id="synergyBar" class="bg-blue-500 h-full transition-all duration-500 ease-out" style="width: 0%"></div>
                     </div>
                 </div>
@@ -271,7 +265,7 @@
     </div>
 
     <script>
-        // --- 核心算法引擎 ---
+        // --- 核心算法 (Space Syntax) ---
         const SyntaxEngine = {
             getIntersection: (l1, l2) => {
                 const det = (l1.x2 - l1.x1) * (l2.y2 - l2.y1) - (l2.x2 - l2.x1) * (l1.y2 - l1.y1);
@@ -295,32 +289,25 @@
                 return adjList;
             },
 
-            // 支持多源 BFS (Multi-source BFS)
-            bfs: (startNodeOrNodes, adjList, maxDepth = null) => {
+            bfs: (startIds, adjList, maxDepth = null) => {
                 const distances = new Map();
+                // Support multiple start points (roots)
                 const queue = [];
+                const roots = Array.isArray(startIds) ? startIds : [startIds];
                 
-                // 标准化输入为数组
-                const starts = Array.isArray(startNodeOrNodes) ? startNodeOrNodes : [startNodeOrNodes];
-                
-                // 将所有起点加入队列，距离初始化为 0
-                starts.forEach(id => {
+                roots.forEach(id => {
                     if (adjList.has(id)) {
                         distances.set(id, 0);
                         queue.push({ id, dist: 0 });
                     }
                 });
 
-                let totalDepth = 0, nodeCount = 0, maxD = 0;
-                
+                let totalDepth = 0, nodeCount = 0;
                 while (queue.length > 0) {
                     const { id, dist } = queue.shift();
                     totalDepth += dist;
                     nodeCount++;
-                    if (dist > maxD) maxD = dist;
-                    
                     if (maxDepth !== null && dist >= maxDepth) continue;
-                    
                     const neighbors = adjList.get(id) || [];
                     for (const neighbor of neighbors) {
                         if (!distances.has(neighbor)) {
@@ -329,7 +316,7 @@
                         }
                     }
                 }
-                return { distances, totalDepth, nodeCount, maxDist: maxD };
+                return { distances, totalDepth, nodeCount };
             },
 
             distPointToSegment: (p, s) => {
@@ -346,135 +333,126 @@
                 const dx = p.x - xx, dy = p.y - yy;
                 return Math.sqrt(dx * dx + dy * dy);
             },
+            
+            // Helper to find line closest to a point
+            findClosestLineId: (point, lines) => {
+                let minD = Infinity;
+                let id = null;
+                lines.forEach(l => {
+                    const d = SyntaxEngine.distPointToSegment(point, l);
+                    if (d < minD) { minD = d; id = l.id; }
+                });
+                return id;
+            },
 
-            // 主要计算函数
+            // --- 新增：混合加权计算 ---
             calculate: (lines, pois) => {
-                if (lines.length === 0) return { metrics: {}, mode: 'NONE' };
-
                 const adjList = SyntaxEngine.buildGraph(lines);
                 const results = {};
                 
-                // 1. 检查是否存在起点 (支持多个)
-                const startPois = pois.filter(p => p.type === 'START');
-                let startMode = false;
-                let startDistances = null;
-                let maxStartDepth = 0;
-                let maxMetricDist = 0;
+                // 1. Check for Entrances
+                const entrancePOIs = pois.filter(p => p.type === 'ENTRANCE');
+                const hasEntrance = entrancePOIs.length > 0;
 
-                if (startPois.length > 0) {
-                    const rootLineIds = [];
-                    // 找到每个起点最近的轴线
-                    startPois.forEach(sp => {
-                        let minD = Infinity;
-                        let nearest = null;
-                        lines.forEach(l => {
-                            const d = SyntaxEngine.distPointToSegment(sp, l);
-                            if (d < minD) { minD = d; nearest = l; }
-                        });
-                        if (nearest && minD < 500) {
-                            rootLineIds.push(nearest.id);
-                        }
-                    });
-
-                    const uniqueRoots = [...new Set(rootLineIds)];
-                    if (uniqueRoots.length > 0) {
-                        startMode = true;
-                        // 执行多源 BFS (Topology)
-                        const bfsRes = SyntaxEngine.bfs(uniqueRoots, adjList);
-                        startDistances = bfsRes.distances;
-                        maxStartDepth = bfsRes.maxDist;
-                    }
+                // 2. Identify Entrance Roots (nearest lines)
+                let entranceLineIds = [];
+                if (hasEntrance) {
+                    entranceLineIds = entrancePOIs.map(ep => SyntaxEngine.findClosestLineId(ep, lines)).filter(id => id !== null);
                 }
 
-                // 2. 预计算所有线的几何距离 (Metric Dist)
-                lines.forEach(l => {
-                    let metricDist = Infinity;
+                // 3. Pre-calculate standard metrics for Tooltip/Diagnostics
+                // We always calculate topological depth for general use
+                // But "Norm" (Color) depends on mode
+                
+                // Use BFS from Entrances if available to get "Step Depth from Entrance"
+                let accessDepths = null;
+                if (hasEntrance && entranceLineIds.length > 0) {
+                     accessDepths = SyntaxEngine.bfs(entranceLineIds, adjList).distances;
+                }
+
+                let minScore = Infinity, maxScore = -Infinity;
+
+                lines.forEach(line => {
+                    // Standard Integration
+                    const global = SyntaxEngine.bfs(line.id, adjList, null);
+                    const local = SyntaxEngine.bfs(line.id, adjList, 3);
+                    const mdG = global.nodeCount > 1 ? global.totalDepth / (global.nodeCount - 1) : 0;
+                    const mdL = local.nodeCount > 1 ? local.totalDepth / (local.nodeCount - 1) : 0;
                     
-                    if (startMode) {
-                        // 计算该轴线到最近起点的几何距离
-                        startPois.forEach(sp => {
-                            const d = SyntaxEngine.distPointToSegment(sp, l);
-                            if (d < metricDist) metricDist = d;
-                        });
-                        if (metricDist !== Infinity && metricDist > maxMetricDist) {
-                            maxMetricDist = metricDist;
+                    const res = {
+                        globalRaw: mdG > 0 ? 1/mdG : 0,
+                        localRaw: mdL > 0 ? 1/mdL : 0,
+                        depths: global.distances,
+                        accessScore: 0
+                    };
+
+                    if (hasEntrance && accessDepths) {
+                        // --- Hybrid Formula ---
+                        // Cost = (Topology Steps * Weight) + (Geometric Distance)
+                        // Heuristic: 1 Step is mentally equivalent to walking ~100 pixels (arbitrary unit)
+                        // If Step is undefined (disconnected), Cost is Infinity
+                        
+                        const topoDepth = accessDepths.get(line.id);
+                        
+                        if (topoDepth !== undefined) {
+                            // Find nearest entrance geometrical distance
+                            let minGeoDist = Infinity;
+                            entrancePOIs.forEach(ep => {
+                                const d = SyntaxEngine.distPointToSegment(ep, line); // Distance to line segment
+                                if (d < minGeoDist) minGeoDist = d;
+                            });
+                            
+                            // Formula: Weighted Sum
+                            // We want "Accessibility", so Lower Cost = Better.
+                            // To map to heat map (Red=High), we will invert later.
+                            const WEIGHT_TOPO = 150; // 权重：转弯一次相当于走150像素
+                            const cost = (topoDepth * WEIGHT_TOPO) + minGeoDist;
+                            res.accessScore = cost; 
+                        } else {
+                            res.accessScore = Infinity;
                         }
                     }
 
-                    results[l.id] = {
-                        depthFromStart: startMode && startDistances.has(l.id) ? startDistances.get(l.id) : -1,
-                        metricDist: metricDist === Infinity ? 0 : metricDist,
-                        depths: null // 稍后计算
-                    };
+                    results[line.id] = res;
+                    
+                    // Track Min/Max for Normalization
+                    // If Entrance Mode: visualization based on accessScore (Lower is better)
+                    // If Standard Mode: visualization based on globalRaw (Higher is better)
+                    const val = hasEntrance ? (res.accessScore === Infinity ? null : -res.accessScore) : res.globalRaw;
+                    
+                    if (val !== null) {
+                        if (val > maxScore) maxScore = val;
+                        if (val < minScore) minScore = val;
+                    }
                 });
 
-                // 3. 计算常规指标并归一化
+                // Normalize for Colors
+                const range = maxScore - minScore;
                 lines.forEach(line => {
-                    // Global & Local Integration needed for general stats
-                    const global = SyntaxEngine.bfs(line.id, adjList, null);
-                    results[line.id].depths = global.distances; // Store for path finding
+                    const r = results[line.id];
+                    let val = hasEntrance ? (r.accessScore === Infinity ? null : -r.accessScore) : r.globalRaw;
                     
-                    const mdG = global.nodeCount > 1 ? global.totalDepth / (global.nodeCount - 1) : 0;
-                    results[line.id].integration = mdG > 0 ? 1/mdG : 0;
+                    if (val === null) {
+                        r.norm = 0; // Disconnected parts are Blue
+                    } else {
+                        r.norm = range === 0 ? 0.5 : (val - minScore) / range;
+                    }
                 });
                 
-                // 4. Color Mapping Logic (The Range Formula)
-                if (startMode) {
-                    // Start Mode: Composite Cost (Topology + Metric)
-                    // We want Red = Low Cost (Close), Blue = High Cost (Far)
-                    
-                    lines.forEach(line => {
-                        const r = results[line.id];
-                        if (r.depthFromStart !== -1) {
-                            // Normalize Topology (0.0 - 1.0)
-                            const nTopo = maxStartDepth > 0 ? r.depthFromStart / maxStartDepth : 0;
-                            
-                            // Normalize Metric (0.0 - 1.0)
-                            const nMetric = maxMetricDist > 0 ? r.metricDist / maxMetricDist : 0;
-                            
-                            // Composite Score (Weighting: 0.6 Topo + 0.4 Metric)
-                            // Adjust weights as needed. 
-                            const cost = (nTopo * 0.6) + (nMetric * 0.4);
-                            
-                            // Invert for heatmap (1.0 = Hot/Good, 0.0 = Cold/Bad)
-                            r.norm = Math.max(0, Math.min(1, 1 - cost));
-                        } else {
-                            r.norm = 0; // Unreachable
-                        }
-                    });
-                } else {
-                    // Integration Mode (Standard)
-                    let maxI = 0, minI = Infinity;
-                    Object.values(results).forEach(r => {
-                        if (r.integration > maxI) maxI = r.integration;
-                        if (r.integration < minI) minI = r.integration;
-                    });
-                    const range = maxI - minI;
-                    lines.forEach(line => {
-                        const r = results[line.id];
-                        r.norm = range === 0 ? 0.5 : (r.integration - minI) / range;
-                    });
-                }
-
-                return { 
-                    metrics: results, 
-                    mode: startMode ? 'DEPTH' : 'INTEGRATION',
-                    stats: { maxDepth: maxStartDepth, maxDist: maxMetricDist }
-                };
+                return { data: results, mode: hasEntrance ? 'ACCESS' : 'INTEGRATION' };
             }
         };
 
-        // --- 全局状态管理 ---
+        // --- 全局状态 ---
         const state = {
             lines: [],
-            pois: [], // { id, x, y, type: 'START' | 'EMERGENCY' ... }
-            analysis: { metrics: {}, mode: 'INTEGRATION', stats: {} },
+            pois: [],
+            metricsResult: { data: {}, mode: 'INTEGRATION' },
             
             camera: { x: 0, y: 0, zoom: 1 },
             mode: 'SELECT',
             selectedIds: [],
             hoverId: null,
-            
             isDragging: false,
             dragStart: { x: 0, y: 0 },
             dragType: null,
@@ -490,7 +468,7 @@
             ctx: null
         };
 
-        // --- 历史记录 ---
+        // --- 历史记录系统 ---
         const historyManager = {
             push: () => {
                 if (state.historyIndex < state.history.length - 1) {
@@ -516,7 +494,6 @@
             }
         };
 
-        // --- 坐标系统 ---
         const transform = {
             screenToWorld: (sx, sy) => ({
                 x: (sx - state.camera.x) / state.camera.zoom,
@@ -533,12 +510,10 @@
             state.canvas = document.getElementById('mainCanvas');
             state.ctx = state.canvas.getContext('2d');
             
-            // 示例数据
             state.lines = [
-                { id: 'l1', x1: 100, y1: 400, x2: 900, y2: 400 }, // 主街
+                { id: 'l1', x1: 100, y1: 400, x2: 900, y2: 400 },
                 { id: 'l2', x1: 300, y1: 100, x2: 300, y2: 600 },
-                { id: 'l3', x1: 700, y1: 200, x2: 700, y2: 500 },
-                { id: 'l4', x1: 700, y1: 500, x2: 850, y2: 500 }
+                { id: 'l3', x1: 700, y1: 200, x2: 700, y2: 500 }
             ];
             historyManager.push();
             
@@ -546,21 +521,20 @@
             bindEvents();
             actions.recalculate();
             
-            requestAnimationFrame(loop);
-        }
-
-        function loop() {
-            render();
-            requestAnimationFrame(loop);
+            const loop = () => {
+                render();
+                requestAnimationFrame(loop);
+            };
+            loop();
         }
 
         function resizeCanvas() {
             const container = document.getElementById('canvasContainer');
             state.canvas.width = container.clientWidth;
             state.canvas.height = container.clientHeight;
+            render();
         }
 
-        // --- 事件绑定 ---
         function bindEvents() {
             const c = state.canvas;
             window.addEventListener('resize', resizeCanvas);
@@ -571,12 +545,12 @@
             window.addEventListener('keydown', onKeyDown);
         }
 
+        // --- 交互事件 ---
         function onMouseDown(e) {
             e.preventDefault();
             const { offsetX, offsetY, button } = e;
             const worldPos = transform.screenToWorld(offsetX, offsetY);
             
-            // Pan
             if (button === 1 || (button === 0 && e.code === 'Space')) {
                 state.isDragging = true;
                 state.dragType = 'PAN';
@@ -589,36 +563,36 @@
                 state.dragStart = { x: worldPos.x, y: worldPos.y };
                 state.isDragging = true;
 
-                // 绘制模式
                 if (state.mode === 'DRAW') {
                     state.currentLine = { x1: worldPos.x, y1: worldPos.y, x2: worldPos.x, y2: worldPos.y };
                     return;
                 }
 
-                // 放置 POI
                 if (state.mode.startsWith('POI')) {
                     const type = state.mode.split('_')[1];
                     const poi = { id: `p_${Date.now()}`, x: worldPos.x, y: worldPos.y, type };
                     state.pois.push(poi);
                     historyManager.push();
-                    state.mode = 'SELECT'; 
+                    state.mode = 'SELECT';
                     updateUI();
                     actions.recalculate();
                     return;
                 }
 
-                // 选择模式
                 if (state.mode === 'SELECT') {
-                    // 端点编辑
                     if (state.selectedIds.length === 1) {
                         const l = state.lines.find(l => l.id === state.selectedIds[0]);
                         if (l) {
-                            const HIT = 10 / state.camera.zoom;
-                            if (Math.hypot(l.x1 - worldPos.x, l.y1 - worldPos.y) < HIT) {
-                                state.dragType = 'EDIT_NODE'; state.activeHandle = 'start'; return;
+                            const HIT_RADIUS = 10 / state.camera.zoom;
+                            if (Math.hypot(l.x1 - worldPos.x, l.y1 - worldPos.y) < HIT_RADIUS) {
+                                state.dragType = 'EDIT_NODE';
+                                state.activeHandle = 'start';
+                                return;
                             }
-                            if (Math.hypot(l.x2 - worldPos.x, l.y2 - worldPos.y) < HIT) {
-                                state.dragType = 'EDIT_NODE'; state.activeHandle = 'end'; return;
+                            if (Math.hypot(l.x2 - worldPos.x, l.y2 - worldPos.y) < HIT_RADIUS) {
+                                state.dragType = 'EDIT_NODE';
+                                state.activeHandle = 'end';
+                                return;
                             }
                         }
                     }
@@ -627,15 +601,20 @@
                     if (hit) {
                         state.dragType = 'MOVE';
                         if (e.ctrlKey || e.shiftKey) {
-                            if (state.selectedIds.includes(hit.id)) state.selectedIds = state.selectedIds.filter(id => id !== hit.id);
-                            else state.selectedIds.push(hit.id);
+                            if (state.selectedIds.includes(hit.id)) {
+                                state.selectedIds = state.selectedIds.filter(id => id !== hit.id);
+                            } else {
+                                state.selectedIds.push(hit.id);
+                            }
                         } else {
-                            if (!state.selectedIds.includes(hit.id)) state.selectedIds = [hit.id];
+                            if (!state.selectedIds.includes(hit.id)) {
+                                state.selectedIds = [hit.id];
+                            }
                         }
                     } else {
                         state.dragType = 'BOX';
                         state.boxSelectRect = { x: worldPos.x, y: worldPos.y, w: 0, h: 0 };
-                        if (!e.ctrlKey) state.selectedIds = [];
+                        if (!e.ctrlKey && !e.shiftKey) state.selectedIds = [];
                     }
                 }
             }
@@ -643,13 +622,16 @@
 
         function onMouseMove(e) {
             const rect = state.canvas.getBoundingClientRect();
-            const worldPos = transform.screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+            const offsetX = e.clientX - rect.left;
+            const offsetY = e.clientY - rect.top;
+            const worldPos = transform.screenToWorld(offsetX, offsetY);
 
             if (!state.isDragging) {
                 const hit = hitTest(worldPos);
                 state.hoverId = hit ? hit.id : null;
-                if (hit && state.analysis.metrics[hit.id]) {
-                    showTooltip(e.clientX, e.clientY, hit.id, state.analysis.metrics[hit.id]);
+                const metrics = state.metricsResult.data;
+                if (hit && metrics[hit.id]) {
+                    showTooltip(e.clientX, e.clientY, hit.id, metrics[hit.id], state.metricsResult.mode);
                 } else {
                     hideTooltip();
                 }
@@ -657,9 +639,11 @@
             }
 
             if (state.dragType === 'PAN') {
-                state.camera.x += (e.clientX - rect.left) - state.dragStart.x;
-                state.camera.y += (e.clientY - rect.top) - state.dragStart.y;
-                state.dragStart = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+                const dx = offsetX - state.dragStart.x;
+                const dy = offsetY - state.dragStart.y;
+                state.camera.x += dx;
+                state.camera.y += dy;
+                state.dragStart = { x: offsetX, y: offsetY };
             } 
             else if (state.mode === 'DRAW' && state.currentLine) {
                 state.currentLine.x2 = worldPos.x;
@@ -688,49 +672,54 @@
             else if (state.dragType === 'BOX') {
                 state.boxSelectRect.w = worldPos.x - state.boxSelectRect.x;
                 state.boxSelectRect.h = worldPos.y - state.boxSelectRect.y;
-                // Simplified Box Select
                 const bx = Math.min(state.boxSelectRect.x, state.boxSelectRect.x + state.boxSelectRect.w);
                 const by = Math.min(state.boxSelectRect.y, state.boxSelectRect.y + state.boxSelectRect.h);
-                const bw = Math.abs(state.boxSelectRect.w), bh = Math.abs(state.boxSelectRect.h);
-                
-                const newSel = [];
+                const bw = Math.abs(state.boxSelectRect.w);
+                const bh = Math.abs(state.boxSelectRect.h);
+                const newSelection = [];
                 state.lines.forEach(l => {
-                    if ((l.x1+l.x2)/2 >= bx && (l.x1+l.x2)/2 <= bx+bw && (l.y1+l.y2)/2 >= by && (l.y1+l.y2)/2 <= by+bh) newSel.push(l.id);
+                    const mx = (l.x1 + l.x2)/2, my = (l.y1 + l.y2)/2;
+                    if (mx >= bx && mx <= bx+bw && my >= by && my <= by+bh) newSelection.push(l.id);
                 });
                 state.pois.forEach(p => {
-                    if (p.x >= bx && p.x <= bx+bw && p.y >= by && p.y <= by+bh) newSel.push(p.id);
+                    if (p.x >= bx && p.x <= bx+bw && p.y >= by && p.y <= by+bh) newSelection.push(p.id);
                 });
-                state.selectedIds = newSel;
+                state.selectedIds = newSelection;
             }
         }
 
-        function onMouseUp() {
+        function onMouseUp(e) {
+            if (!state.isDragging) return;
             if (state.mode === 'DRAW' && state.currentLine) {
-                if (Math.hypot(state.currentLine.x2-state.currentLine.x1, state.currentLine.y2-state.currentLine.y1) > 5) {
+                const len = Math.hypot(state.currentLine.x2 - state.currentLine.x1, state.currentLine.y2 - state.currentLine.y1);
+                if (len > 5) {
                     state.currentLine.id = `l_${Date.now()}`;
                     state.lines.push(state.currentLine);
                     historyManager.push();
                     actions.recalculate();
                 }
                 state.currentLine = null;
-            } else if (state.isDragging && ['MOVE','EDIT_NODE'].includes(state.dragType)) {
+            }
+            else if (['MOVE', 'EDIT_NODE'].includes(state.dragType)) {
                 historyManager.push();
             }
             state.isDragging = false;
             state.dragType = null;
+            state.activeHandle = null;
             state.boxSelectRect = null;
             state.canvas.classList.remove('cursor-panning');
         }
 
         function onWheel(e) {
             e.preventDefault();
-            const delta = -e.deltaY * 0.001;
-            const zoomFactor = Math.pow(1.1, delta > 0 ? 1 : -1);
+            const zoomSensitivity = 0.001;
+            const delta = -e.deltaY * zoomSensitivity;
             const rect = state.canvas.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
             const worldMouse = transform.screenToWorld(mouseX, mouseY);
-            let newZoom = Math.max(0.1, Math.min(10, state.camera.zoom * (delta > 0 ? 1.1 : 0.9)));
+            let newZoom = state.camera.zoom * (delta > 0 ? 1.1 : 0.9);
+            newZoom = Math.max(0.1, Math.min(10, newZoom));
             state.camera.x = mouseX - worldMouse.x * newZoom;
             state.camera.y = mouseY - worldMouse.y * newZoom;
             state.camera.zoom = newZoom;
@@ -738,138 +727,129 @@
         }
 
         function onKeyDown(e) {
-            if (e.key === 'Delete') actions.deleteSelection();
+            if (e.key === 'Delete' || e.key === 'Backspace') actions.deleteSelection();
             if (e.key === 'z' && (e.ctrlKey || e.metaKey)) actions.undo();
             if (e.key === 'v') setMode('SELECT');
             if (e.key === 'p') setMode('DRAW');
         }
 
-        // --- 辅助 ---
         function hitTest(pos) {
-            const HIT = 8 / state.camera.zoom;
+            const HIT_DIST = 8 / state.camera.zoom;
             for (let i = state.pois.length - 1; i >= 0; i--) {
-                if (Math.hypot(state.pois[i].x - pos.x, state.pois[i].y - pos.y) < HIT * 1.5) return state.pois[i];
+                const p = state.pois[i];
+                if (Math.hypot(p.x - pos.x, p.y - pos.y) < HIT_DIST * 1.5) return p;
             }
             for (let i = state.lines.length - 1; i >= 0; i--) {
-                if (SyntaxEngine.distPointToSegment(pos, state.lines[i]) < HIT) return state.lines[i];
+                const l = state.lines[i];
+                if (SyntaxEngine.distPointToSegment(pos, l) < HIT_DIST) return l;
             }
             return null;
         }
 
-        // --- 渲染 ---
         function render() {
-            const { ctx, canvas, camera, lines, pois, selectedIds, analysis } = state;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const { ctx, canvas, camera, lines, pois, selectedIds } = state;
+            const metrics = state.metricsResult.data;
             
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.save();
             ctx.translate(camera.x, camera.y);
             ctx.scale(camera.zoom, camera.zoom);
+            
+            if (state.bgImage) {
+                ctx.drawImage(state.bgImage, 0, 0); 
+            } else {
+                drawGrid(ctx, canvas, camera);
+            }
 
-            if (state.bgImage) ctx.drawImage(state.bgImage, 0, 0);
-            else drawGrid(ctx, canvas, camera);
-
-            // 绘制线条
+            // Draw Lines
             lines.forEach(l => {
-                const sel = selectedIds.includes(l.id);
-                const hover = state.hoverId === l.id;
-                const m = analysis.metrics[l.id];
-
-                // 选中高亮
-                if (sel || hover) {
+                const isSelected = selectedIds.includes(l.id);
+                const isHover = state.hoverId === l.id;
+                const m = metrics[l.id];
+                
+                ctx.lineCap = 'round';
+                
+                if (isSelected || isHover) {
                     ctx.beginPath();
-                    ctx.moveTo(l.x1, l.y1); ctx.lineTo(l.x2, l.y2);
+                    ctx.moveTo(l.x1, l.y1);
+                    ctx.lineTo(l.x2, l.y2);
                     ctx.lineWidth = 12 / camera.zoom;
-                    ctx.strokeStyle = sel ? 'rgba(250, 204, 21, 0.4)' : 'rgba(255, 255, 255, 0.4)';
+                    ctx.strokeStyle = isSelected ? 'rgba(250, 204, 21, 0.5)' : 'rgba(255, 255, 255, 0.5)';
                     ctx.stroke();
                 }
 
-                // 实体线
                 ctx.beginPath();
-                ctx.moveTo(l.x1, l.y1); ctx.lineTo(l.x2, l.y2);
+                ctx.moveTo(l.x1, l.y1);
+                ctx.lineTo(l.x2, l.y2);
                 ctx.lineWidth = 6 / camera.zoom;
-                ctx.lineCap = 'round';
                 
                 if (m) {
-                    // 颜色映射 (Hue 240=Blue -> 0=Red)
                     const hue = (1 - m.norm) * 240;
                     ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
                 } else {
-                    ctx.strokeStyle = '#cbd5e1';
+                    ctx.strokeStyle = '#94a3b8';
                 }
                 ctx.stroke();
 
-                if (sel && selectedIds.length === 1) {
+                if (isSelected && selectedIds.length === 1) {
                     drawHandle(ctx, l.x1, l.y1, camera.zoom);
                     drawHandle(ctx, l.x2, l.y2, camera.zoom);
                 }
             });
 
             if (state.currentLine) {
+                const l = state.currentLine;
                 ctx.beginPath();
-                ctx.moveTo(state.currentLine.x1, state.currentLine.y1);
-                ctx.lineTo(state.currentLine.x2, state.currentLine.y2);
+                ctx.moveTo(l.x1, l.y1);
+                ctx.lineTo(l.x2, l.y2);
                 ctx.lineWidth = 2 / camera.zoom;
                 ctx.strokeStyle = '#3b82f6';
-                ctx.setLineDash([5/camera.zoom, 5/camera.zoom]);
+                ctx.setLineDash([5 / camera.zoom, 5 / camera.zoom]);
                 ctx.stroke();
                 ctx.setLineDash([]);
             }
 
-            // 绘制 POI
             pois.forEach(p => {
-                const sel = selectedIds.includes(p.id);
-                const r = (sel ? 12 : 9) / camera.zoom;
+                const isSelected = selectedIds.includes(p.id);
+                const radius = (isSelected ? 10 : 8) / camera.zoom;
                 
-                // 起点绘制特殊标记 (旗帜)
-                if (p.type === 'START') {
-                    // Draw Flag Pole
-                    ctx.beginPath();
-                    ctx.moveTo(p.x, p.y);
-                    ctx.lineTo(p.x, p.y - r * 2.5);
-                    ctx.lineWidth = 2 / camera.zoom;
-                    ctx.strokeStyle = '#713f12';
-                    ctx.stroke();
-                    
-                    // Draw Flag
-                    ctx.beginPath();
-                    ctx.moveTo(p.x, p.y - r * 2.5);
-                    ctx.lineTo(p.x + r * 1.5, p.y - r * 2);
-                    ctx.lineTo(p.x, p.y - r * 1.5);
-                    ctx.fillStyle = '#eab308'; // Yellow
-                    ctx.fill();
-                    
-                    // Base
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, r/2, 0, Math.PI*2);
-                    ctx.fillStyle = '#713f12';
-                    ctx.fill();
-                    
-                    if (sel) {
-                        ctx.beginPath(); ctx.arc(p.x, p.y, r*1.5, 0, Math.PI*2);
-                        ctx.strokeStyle = '#eab308'; ctx.stroke();
-                    }
-                    return;
-                }
-
-                // 其他 POI
                 ctx.beginPath();
-                ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+                ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+                
                 let color = '#64748b';
-                if (p.type === 'EMERGENCY') color = '#ef4444';
-                else if (p.type === 'SURGERY') color = '#3b82f6';
-                else if (p.type === 'ICU') color = '#a855f7';
-                else if (p.type === 'WARD') color = '#10b981';
+                let label = '';
+                if (p.type === 'EMERGENCY') { color = '#ef4444'; label = 'E'; }
+                else if (p.type === 'SURGERY') { color = '#3b82f6'; label = 'S'; }
+                else if (p.type === 'ICU') { color = '#a855f7'; label = 'I'; }
+                else if (p.type === 'WARD') { color = '#10b981'; label = 'W'; }
+                else if (p.type === 'ENTRANCE') { color = '#b45309'; label = 'In'; } // New Color for Entrance
+
                 ctx.fillStyle = color;
                 ctx.fill();
-                ctx.lineWidth = 2 / camera.zoom;
-                ctx.strokeStyle = sel ? '#facc15' : '#fff';
-                ctx.stroke();
+                
+                if (isSelected) {
+                    ctx.lineWidth = 3 / camera.zoom;
+                    ctx.strokeStyle = '#facc15';
+                    ctx.stroke();
+                } else {
+                    ctx.lineWidth = 1.5 / camera.zoom;
+                    ctx.strokeStyle = '#fff';
+                    ctx.stroke();
+                }
+                
+                // Draw Label
+                ctx.fillStyle = 'white';
+                ctx.font = `${8/camera.zoom}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(label, p.x, p.y);
             });
 
             if (state.dragType === 'BOX' && state.boxSelectRect) {
                 const r = state.boxSelectRect;
                 ctx.fillStyle = 'rgba(59, 130, 246, 0.2)';
                 ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = 1 / camera.zoom;
                 ctx.fillRect(r.x, r.y, r.w, r.h);
                 ctx.strokeRect(r.x, r.y, r.w, r.h);
             }
@@ -881,28 +861,36 @@
             const step = 100;
             ctx.strokeStyle = '#e2e8f0';
             ctx.lineWidth = 1 / camera.zoom;
-            const left = -camera.x / camera.zoom, top = -camera.y / camera.zoom;
-            const right = left + canvas.width / camera.zoom, bottom = top + canvas.height / camera.zoom;
-            
+            const left = -camera.x / camera.zoom;
+            const top = -camera.y / camera.zoom;
+            const right = left + canvas.width / camera.zoom;
+            const bottom = top + canvas.height / camera.zoom;
+            const startX = Math.floor(left / step) * step;
+            const startY = Math.floor(top / step) * step;
+
             ctx.beginPath();
-            for (let x = Math.floor(left/step)*step; x < right; x+=step) { ctx.moveTo(x, top); ctx.lineTo(x, bottom); }
-            for (let y = Math.floor(top/step)*step; y < bottom; y+=step) { ctx.moveTo(left, y); ctx.lineTo(right, y); }
+            for (let x = startX; x < right; x += step) { ctx.moveTo(x, top); ctx.lineTo(x, bottom); }
+            for (let y = startY; y < bottom; y += step) { ctx.moveTo(left, y); ctx.lineTo(right, y); }
             ctx.stroke();
         }
 
         function drawHandle(ctx, x, y, zoom) {
-            const s = 6 / zoom;
-            ctx.fillStyle = '#fff'; ctx.strokeStyle = '#000'; ctx.lineWidth = 1/zoom;
-            ctx.fillRect(x-s/2, y-s/2, s, s); ctx.strokeRect(x-s/2, y-s/2, s, s);
+            const size = 6 / zoom;
+            ctx.fillStyle = '#fff';
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1 / zoom;
+            ctx.beginPath();
+            ctx.rect(x - size/2, y - size/2, size, size);
+            ctx.fill();
+            ctx.stroke();
         }
 
-        // --- 逻辑与 UI 更新 ---
         const actions = {
             recalculate: () => {
-                state.analysis = SyntaxEngine.calculate(state.lines, state.pois);
+                state.metricsResult = SyntaxEngine.calculate(state.lines, state.pois);
                 document.getElementById('objCount').innerText = `${state.lines.length} Lines`;
                 updateDiagnostics();
-                updateUIState();
+                updateUI();
             },
             deleteSelection: () => {
                 if (state.selectedIds.length === 0) return;
@@ -920,145 +908,154 @@
             updateUI();
         }
 
-        function updateUIState() {
-            // 更新模式徽章和图例
-            const mode = state.analysis.mode;
-            const badge = document.getElementById('analysisModeBadge');
-            const legendT = document.getElementById('legendTitle');
-            const legendL = document.getElementById('legendLow');
-            const legendH = document.getElementById('legendHigh');
-
-            if (mode === 'DEPTH') {
-                badge.innerHTML = `<i class="fa fa-map-signs"></i> 入口综合分析`;
-                badge.className = "text-sm font-bold text-yellow-600 flex items-center gap-1";
-                legendT.innerText = "Composite Depth (Step + Metric)";
-                legendL.innerText = "Deep (High Cost)";
-                legendH.innerText = "Shallow (Low Cost)";
-            } else {
-                badge.innerHTML = `<i class="fa fa-globe"></i> 全局整合度`;
-                badge.className = "text-sm font-bold text-blue-600 flex items-center gap-1";
-                legendT.innerText = "Global Integration";
-                legendL.innerText = "Segregated";
-                legendH.innerText = "Integrated";
-            }
-        }
-
-        function updateDiagnostics() {
-            // 1. Entrance Accessibility
-            const maxDepth = state.analysis.stats.maxDepth;
-            const entStat = document.getElementById('entranceStatus');
-            const maxDVal = document.getElementById('maxDepthVal');
-            
-            if (state.analysis.mode === 'DEPTH') {
-                maxDVal.innerText = maxDepth;
-                // Add metric distance hint
-                if (maxDepth < 5) {
-                    entStat.innerHTML = '<span class="text-green-600 font-bold">优秀：</span> 拓扑动线紧凑';
-                } else if (maxDepth < 8) {
-                    entStat.innerHTML = '<span class="text-orange-500 font-bold">一般：</span> 存在深层区域';
-                } else {
-                    entStat.innerHTML = '<span class="text-red-500 font-bold">警告：</span> 部分区域寻路困难';
-                }
-            } else {
-                maxDVal.innerText = "-";
-                entStat.innerText = "请添加起点...";
-            }
-
-            // 2. Emergency
-            const ePoi = state.pois.find(p => p.type === 'EMERGENCY');
-            const sPoi = state.pois.find(p => p.type === 'SURGERY');
-            const emStatus = document.getElementById('emergencyStatus');
-            const emDepth = document.getElementById('emergencyDepth');
-            
-            if (ePoi && sPoi) {
-                // Find nearest lines logic...
-                let l1, l2, d1=Infinity, d2=Infinity;
-                state.lines.forEach(l => {
-                    const dd1 = SyntaxEngine.distPointToSegment(ePoi, l);
-                    if (dd1<d1) {d1=dd1; l1=l;}
-                    const dd2 = SyntaxEngine.distPointToSegment(sPoi, l);
-                    if (dd2<d2) {d2=dd2; l2=l;}
-                });
-
-                if (l1 && l2 && state.analysis.metrics[l1.id]) {
-                    const pathDist = state.analysis.metrics[l1.id].depths.get(l2.id);
-                    emDepth.innerText = pathDist !== undefined ? pathDist : 'X';
-                    if (pathDist <= 3) emStatus.innerHTML = '<span class="text-green-600">高效流线</span>';
-                    else if (pathDist > 3) emStatus.innerHTML = '<span class="text-red-500">流线过长</span>';
-                    else emStatus.innerText = "不连通";
-                }
-            } else {
-                emDepth.innerText = "-";
-                emStatus.innerText = "等待标记...";
-            }
-
-            // 3. Synergy
-            const metrics = Object.values(state.analysis.metrics);
-            const high = metrics.filter(m => m.norm > 0.75).length;
-            const ratio = metrics.length > 0 ? Math.round((high / metrics.length) * 100) : 0;
-            document.getElementById('coreRatio').innerText = ratio + "%";
-            document.getElementById('synergyBar').style.width = ratio + "%";
-        }
-
         function updateUI() {
-            ['selectBtn', 'drawBtn'].forEach(id => {
-                const el = document.getElementById(id);
-                const isActive = (id === 'selectBtn' && state.mode === 'SELECT') || (id === 'drawBtn' && state.mode === 'DRAW');
-                el.className = isActive 
-                    ? "flex-1 flex flex-col items-center gap-1 p-2 rounded-lg text-xs transition-all bg-blue-600 text-white shadow-md transform scale-105"
-                    : "flex-1 flex flex-col items-center gap-1 p-2 rounded-lg text-xs transition-all bg-gray-100 hover:bg-gray-200 text-slate-600";
-            });
-
-            document.querySelectorAll('.poi-btn').forEach(b => {
-                const type = b.id.replace('Btn', '').toUpperCase();
-                if (state.mode === 'POI_' + type) {
-                    b.classList.add('ring-2', 'ring-blue-400', 'bg-white', 'shadow-md');
+            // Update Tool Selectors
+            const map = { 'SELECT': 'selectBtn', 'DRAW': 'drawBtn' };
+            ['SELECT', 'DRAW'].forEach(m => {
+                const el = document.getElementById(map[m]);
+                if (m === state.mode) {
+                    el.classList.add('bg-blue-600', 'text-white', 'ring-2', 'ring-blue-200');
+                    el.classList.remove('bg-gray-100', 'hover:bg-gray-200');
                 } else {
-                    b.classList.remove('ring-2', 'ring-blue-400', 'bg-white', 'shadow-md');
+                    el.classList.remove('bg-blue-600', 'text-white', 'ring-2', 'ring-blue-200');
+                    el.classList.add('bg-gray-100', 'hover:bg-gray-200');
                 }
             });
+
+            // Update POI buttons
+            document.querySelectorAll('.poi-btn').forEach(b => {
+                const btnType = 'POI_' + b.id.replace('Btn', '').toUpperCase();
+                if (state.mode === btnType) {
+                    b.classList.add('ring-2', 'ring-offset-1', 'bg-gray-100');
+                } else {
+                    b.classList.remove('ring-2', 'ring-offset-1', 'bg-gray-100');
+                }
+            });
+            
+            // Update Legend Title based on Mode
+            const isAccessMode = state.metricsResult.mode === 'ACCESS';
+            document.getElementById('analysisMode').innerText = isAccessMode ? "Hybrid Access" : "Global Int";
+            document.getElementById('analysisMode').className = isAccessMode 
+                ? "text-[10px] bg-amber-100 text-amber-700 px-1 rounded font-bold"
+                : "text-[10px] bg-blue-50 text-blue-700 px-1 rounded font-bold";
+                
+            document.getElementById('legendLow').innerText = isAccessMode ? "Low / Far" : "Low / Deep";
+            document.getElementById('legendHigh').innerText = isAccessMode ? "High / Close" : "High / Shallow";
 
             if (state.mode === 'DRAW') state.canvas.className = 'cursor-draw';
             else if (state.mode === 'SELECT') state.canvas.className = 'cursor-select';
         }
 
-        function showTooltip(x, y, id, metric) {
-            const el = document.getElementById('tooltip');
-            const content = document.getElementById('tooltipContent');
-            el.classList.remove('hidden');
-            el.style.left = x + 15 + 'px';
-            el.style.top = y + 15 + 'px';
-            document.getElementById('tooltipId').innerText = id;
-
-            if (state.analysis.mode === 'DEPTH') {
-                content.innerHTML = `
-                    <div class="flex justify-between gap-4 text-gray-300"><span>Steps:</span> <span class="text-yellow-400 font-bold font-mono">${metric.depthFromStart}</span></div>
-                    <div class="flex justify-between gap-4 text-gray-300"><span>Dist:</span> <span class="text-blue-300 font-bold font-mono">${Math.round(metric.metricDist)} px</span></div>
-                    <div class="text-[10px] text-gray-500 mt-1 border-t border-gray-700 pt-1">Topo 60% + Metric 40%</div>
-                `;
-            } else {
-                content.innerHTML = `
-                    <div class="flex justify-between gap-4 text-gray-300"><span>Global (Rn):</span> <span class="text-blue-400 font-bold font-mono">${metric.integration.toFixed(2)}</span></div>
-                    <div class="text-[10px] text-gray-500 mt-1">Local Value hidden</div>
-                `;
-            }
-        }
-        function hideTooltip() { document.getElementById('tooltip').classList.add('hidden'); }
         function handleFileUpload(e) {
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
-                reader.onload = (evt) => {
+                reader.onload = (event) => {
                     const img = new Image();
                     img.onload = () => {
                         state.bgImage = img;
                         state.camera.x = (state.canvas.width - img.width)/2;
                         state.camera.y = (state.canvas.height - img.height)/2;
+                        render();
                     };
-                    img.src = evt.target.result;
+                    img.src = event.target.result;
                 };
                 reader.readAsDataURL(file);
             }
+        }
+
+        function showTooltip(x, y, id, metric, mode) {
+            const el = document.getElementById('tooltip');
+            el.classList.remove('hidden');
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+            document.getElementById('tooltipId').innerText = id;
+            
+            const content = document.getElementById('tooltipContent');
+            if (mode === 'ACCESS') {
+                content.innerHTML = `
+                    <div class="flex justify-between gap-4"><span>Score:</span> <span class="text-amber-400 font-mono font-bold">${metric.accessScore.toFixed(0)}</span></div>
+                    <div class="text-[10px] text-gray-400 mt-1">Weighted Dist + Depth</div>
+                `;
+            } else {
+                content.innerHTML = `
+                    <div class="flex justify-between gap-4"><span>Global (R=n):</span> <span class="text-yellow-400 font-mono font-bold">${metric.globalRaw.toFixed(2)}</span></div>
+                    <div class="flex justify-between gap-4"><span>Local (R=3):</span> <span class="text-green-400 font-mono font-bold">${metric.localRaw.toFixed(2)}</span></div>
+                `;
+            }
+        }
+
+        function hideTooltip() {
+            document.getElementById('tooltip').classList.add('hidden');
+        }
+
+        function updateDiagnostics() {
+            const metrics = state.metricsResult.data;
+            const report = { depth: '-' };
+            
+            // 1. Emergency
+            const ePoi = state.pois.find(p => p.type === 'EMERGENCY');
+            const sPoi = state.pois.find(p => p.type === 'SURGERY');
+            
+            if (ePoi && sPoi) {
+                const findClosest = (p) => {
+                    let minD = Infinity, res = null;
+                    state.lines.forEach(l => {
+                        const d = SyntaxEngine.distPointToSegment(p, l);
+                        if (d < minD) { minD = d; res = l; }
+                    });
+                    return res;
+                };
+                const lStart = findClosest(ePoi);
+                const lEnd = findClosest(sPoi);
+                
+                if (lStart && lEnd && metrics[lStart.id]) {
+                    const d = metrics[lStart.id].depths.get(lEnd.id);
+                    report.depth = d !== undefined ? d : '断连';
+                    
+                    const statusEl = document.getElementById('emergencyStatus');
+                    if (d <= 3) {
+                        statusEl.className = "mt-2 text-xs font-medium px-2 py-1 rounded w-fit bg-green-100 text-green-700";
+                        statusEl.innerText = "优秀 (高效)";
+                    } else if (d > 3) {
+                        statusEl.className = "mt-2 text-xs font-medium px-2 py-1 rounded w-fit bg-red-100 text-red-700";
+                        statusEl.innerText = "警告 (路径过长)";
+                    } else {
+                        statusEl.className = "mt-2 text-xs font-medium px-2 py-1 rounded w-fit bg-orange-100 text-orange-700";
+                        statusEl.innerText = "路径不通";
+                    }
+                }
+            }
+            document.getElementById('emergencyDepth').innerText = report.depth;
+
+            // 2. ICU
+            const iPoi = state.pois.find(p => p.type === 'ICU');
+            if (iPoi) {
+                let minD = Infinity, res = null;
+                state.lines.forEach(l => {
+                    const d = SyntaxEngine.distPointToSegment(iPoi, l);
+                    if (d < minD) { minD = d; res = l; }
+                });
+                if (res && metrics[res.id]) {
+                    const val = metrics[res.id].localRaw;
+                    document.getElementById('privacyValue').innerText = val.toFixed(2);
+                    const msgEl = document.getElementById('privacyMsg');
+                    if (val > 0.8) { 
+                         msgEl.innerText = "警告：位于高人流区";
+                         msgEl.className = "text-xs mt-2 font-bold text-red-500";
+                    } else {
+                         msgEl.innerText = "位置良好 (安静)";
+                         msgEl.className = "text-xs mt-2 text-green-500";
+                    }
+                }
+            }
+
+            // 3. Synergy
+            const total = state.lines.length;
+            const high = Object.values(metrics).filter(m => m.norm > 0.75).length;
+            document.getElementById('highIntCount').innerText = high;
+            document.getElementById('mainStreetStatus').innerText = high > 0 ? "已形成" : "未形成";
+            document.getElementById('synergyBar').style.width = total > 0 ? `${(high/total)*100}%` : '0%';
         }
 
         window.onload = init;
